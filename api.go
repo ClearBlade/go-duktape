@@ -171,6 +171,10 @@ import (
 	"unsafe"
 )
 
+type PtrStruct struct {
+	StrPtr *C.char
+}
+
 // See: http://duktape.org/api.html#duk_alloc
 func (d *Context) Alloc(size int) unsafe.Pointer {
 	return C.duk_alloc(d.duk_context, C.duk_size_t(size))
@@ -883,6 +887,23 @@ func (d *Context) PevalString(src string) error {
 	result := int(C._duk_peval_string(d.duk_context, __src__))
 	C.free(unsafe.Pointer(__src__))
 	return d.castStringToError(result)
+}
+
+func (d *Context) PevalStringPtr(ptrStruct *PtrStruct) error {
+	__src__ := ptrStruct.StrPtr
+	result := int(C._duk_peval_string(d.duk_context, __src__))
+	return d.castStringToError(result)
+}
+
+func GetStringPtr(src string) *PtrStruct {
+	__src__ := C.CString(src)
+	return &PtrStruct{
+		StrPtr: __src__,
+	}
+}
+
+func FreeStringPtr(ptrStruct *PtrStruct) {
+	C.free(unsafe.Pointer(ptrStruct.StrPtr))
 }
 
 // See: http://duktape.org/api.html#duk_peval_string_noresult

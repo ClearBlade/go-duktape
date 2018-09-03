@@ -68,6 +68,26 @@ func New() *Context {
 	return d
 }
 
+func NewWithDeadline(epochDeadline *int64) *Context {
+	p := unsafe.Pointer(epochDeadline)
+	d := &Context{
+		&context{
+			duk_context: C.duk_create_heap(nil, nil, nil, p, nil),
+			fnIndex:     newFunctionIndex(),
+			timerIndex:  &timerIndex{},
+		},
+	}
+
+	ctx := d.duk_context
+	C.duk_logging_init(ctx, 0)
+	C.duk_print_alert_init(ctx, 0)
+	C.duk_module_duktape_init(ctx)
+	C.duk_console_init(ctx, 0)
+
+	return d
+
+}
+
 // Flags is a set of flags for controlling the behaviour of duktape.
 type Flags struct {
 	Logging    uint
