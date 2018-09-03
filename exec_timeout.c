@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <time.h>
 
 int execution_timeout_callback(void *udata) {
