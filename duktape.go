@@ -1,17 +1,24 @@
 package duktape
 
 /*
-#cgo !windows CFLAGS: -std=c99 -O3 -Wall -fomit-frame-pointer -fstrict-aliasing
-#cgo windows CFLAGS: -O3 -Wall -fomit-frame-pointer -fstrict-aliasing
+#cgo !windows CFLAGS: -std=c99 -O3 -fomit-frame-pointer -fstrict-aliasing
+#cgo windows CFLAGS: -O3 -fomit-frame-pointer -fstrict-aliasing
 #cgo linux LDFLAGS: -lm
 #cgo freebsd LDFLAGS: -lm
 #cgo openbsd LDFLAGS: -lm
-
+#cgo CFLAGS: -I${SRCDIR}/dukluv/lib/uv
+#cgo CFLAGS: -I${SRCDIR}/dukluv/lib/uv/include
+#cgo LDFLAGS: ${SRCDIR}/dukluv/build/libdschema.a
+#cgo LDFLAGS: ${SRCDIR}/dukluv/build/libduktape.a
+#cgo LDFLAGS: ${SRCDIR}/dukluv/build/libduv.a
+#cgo LDFLAGS: ${SRCDIR}/dukluv/build/lib/uv/libuv_a.a
 #include "duktape.h"
 #include "duk_logging.h"
 #include "duk_print_alert.h"
 #include "duk_module_duktape.h"
 #include "duk_console.h"
+#include "./dukluv/lib/uv/include/uv.h"
+#include "loop_utils.h"
 extern duk_ret_t goFunctionCall(duk_context *ctx);
 extern void goFinalizeCall(duk_context *ctx);
 */
@@ -46,6 +53,7 @@ type context struct {
 	duk_context *C.duk_context
 	fnIndex     *functionIndex
 	timerIndex  *timerIndex
+	loop        *C.uv_loop_t
 }
 
 // New returns plain initialized duktape context object
@@ -86,6 +94,89 @@ func NewWithDeadline(epochDeadline *int64) *Context {
 
 	return d
 
+}
+
+// NewWithEventLoop returns plain initialized duktape context object
+// See: http://duktape.org/api.html#duk_create_heap_default
+func NewWithEventLoop() *Context {
+	loopInit := C.loop_init()
+	d := &Context{
+		&context{
+			duk_context: loopInit.ctx,
+			fnIndex:     newFunctionIndex(),
+			timerIndex:  &timerIndex{},
+			loop:        loopInit.loop,
+		},
+	}
+
+	d.PevalString(`var my_timers = {};
+	var timer_id = 0;
+	setTimeout = function(func, delay) {
+	  var cb_func;
+	  var bind_args;
+	
+	  // Delay can be optional at least in some contexts, so tolerate that.
+	  // https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/setTimeout
+	  if (typeof delay !== "number") {
+		if (typeof delay === "undefined") {
+		  delay = 0;
+		} else {
+		  throw new TypeError("invalid delay");
+		}
+	  }
+	
+	  if (typeof func === "string") {
+		// Legacy case: callback is a string.
+		cb_func = eval.bind(this, func);
+	  } else if (typeof func !== "function") {
+		throw new TypeError("callback is not a function/string");
+	  } else if (arguments.length > 2) {
+		// Special case: callback arguments are provided.
+		bind_args = Array.prototype.slice.call(arguments, 2); // [ arg1, arg2, ... ]
+		bind_args.unshift(this); // [ global(this), arg1, arg2, ... ]
+		cb_func = func.bind.apply(func, bind_args);
+	  } else {
+		// Normal case: callback given as a function without arguments.
+		cb_func = func;
+	  }
+	
+	  timer_id++;
+	  var context = {};
+	  var timer = uv.new_timer.call(context);
+	  my_timers[timer_id] = timer;
+	
+	  uv.timer_start(timer, delay, 0, function() {
+		uv.close.call(context, timer, function() {});
+		delete my_timers[timer_id];
+		cb_func();
+	  });
+	
+	  return timer_id;
+	};
+	
+	clearTimeout = function(timer_id) {
+	  if (typeof timer_id !== "number") {
+		throw new TypeError("timer ID is not a number");
+	  }
+	
+	  var timer = my_timers[timer_id];
+	  if (typeof timer === "undefined") {
+		throw new ReferenceError("no timer with id " + "'" + timer_id + "'");
+	  }
+	
+	  uv.timer_stop(timer);
+	  uv.close(timer);
+	  delete my_timers[timer_id];
+	};
+	`)
+
+	// ctx := d.duk_context
+	// C.duk_logging_init(ctx, 0)
+	// C.duk_print_alert_init(ctx, 0)
+	// C.duk_module_duktape_init(ctx)
+	// C.duk_console_init(ctx, 0)
+
+	return d
 }
 
 // Flags is a set of flags for controlling the behaviour of duktape.
@@ -219,7 +310,7 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Type, e.Message)
 }
 
-type Type int
+type Type uint
 
 func (t Type) IsNone() bool      { return t == TypeNone }
 func (t Type) IsUndefined() bool { return t == TypeUndefined }

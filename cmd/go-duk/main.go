@@ -1,16 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 
-	"github.com/clearblade/go-duktape"
+	"gopkg.in/olebedev/go-duktape.v3"
 )
 
 func main() {
-	t := int64(0)
-	ctx := duktape.NewWithDeadline(&t)
+	ctx := duktape.NewWithEventLoop()
 	ctx.PevalString(`var console = {log:print,warn:print,error:print,info:print}`)
 	if len(os.Args) < 2 {
 		log.Fatal("expected an input file")
@@ -27,7 +27,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := ctx.PevalString(string(b)); err != nil {
+	// fmt.Println("Calling PevalString")
+	// if err := ctx.PevalString(string(b)); err != nil {
+	// 	log.Fatal(err)
+	// }
+	fmt.Println("Calling PevalStringWithLoop")
+	if err := ctx.PevalStringWithLoop(string(b)); err != nil {
 		log.Fatal(err)
 	}
 }
