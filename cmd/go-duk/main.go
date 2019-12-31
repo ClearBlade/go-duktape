@@ -5,11 +5,12 @@ import (
 	"log"
 	"os"
 
-	"gopkg.in/olebedev/go-duktape.v3"
+	"github.com/clearblade/go-duktape"
 )
 
 func main() {
-	ctx := duktape.New()
+	t := int64(0)
+	ctx := duktape.NewWithDeadline(&t)
 	ctx.PevalString(`var console = {log:print,warn:print,error:print,info:print}`)
 	if len(os.Args) < 2 {
 		log.Fatal("expected an input file")
