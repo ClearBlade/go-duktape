@@ -1,4 +1,5 @@
 #include "./dukluv/src/duv.h"
+#include "./dukluv/src/misc.h"
 
 #include "duk_module_duktape.h"
 #include "duk_console.h"
@@ -7,22 +8,33 @@
 // todo: remove global loop
 static uv_loop_t loop;
 
-static void duv_dump_error(duk_context *ctx, duk_idx_t idx)
+static duk_ret_t duv_main(duk_context *ctx)
 {
-    fprintf(stderr, "\nUncaught Exception:\n");
-    if (duk_is_object(ctx, idx))
+    const char *src = duk_get_string(ctx, -1);
+    duk_push_global_object(ctx);
+    duk_dup(ctx, -1);
+    duk_put_prop_string(ctx, -2, "global");
+
+    duk_push_boolean(ctx, 1);
+    duk_put_prop_string(ctx, -2, "dukluv");
+
+    // Load duv module into global uv
+    duk_push_c_function(ctx, dukopen_uv, 0);
+    duk_call(ctx, 0);
+    duk_put_prop_string(ctx, -2, "uv");
+
+    if (duk_peval_string(ctx, src))
     {
-        duk_get_prop_string(ctx, -1, "stack");
-        fprintf(stderr, "\n%s\n\n", duk_get_string(ctx, -1));
-        duk_pop(ctx);
+        uv_loop_close(&loop);
+        return -1;
     }
-    else
-    {
-        fprintf(stderr, "\nThrown Value: %s\n\n", duk_json_encode(ctx, idx));
-    }
+    uv_run(&loop, UV_RUN_DEFAULT);
+
+    return 0;
 }
 
-loop_init_rtn loop_init()
+loop_init_rtn
+loop_init()
 {
     duk_context *ctx = NULL;
     uv_loop_init(&loop);
@@ -36,25 +48,12 @@ loop_init_rtn loop_init()
             .ctx = ctx,
             .loop = &loop,
         };
+        // todo: return an error?
         return temp;
     }
     duk_module_duktape_init(ctx);
     duk_console_init(ctx, 0);
     loop.data = ctx;
-
-    // begin inline duv_main
-    duk_push_global_object(ctx);
-    duk_dup(ctx, -1);
-    duk_put_prop_string(ctx, -2, "global");
-
-    duk_push_boolean(ctx, 1);
-    duk_put_prop_string(ctx, -2, "dukluv");
-
-    // Load duv module into global uv
-    duk_push_c_function(ctx, dukopen_uv, 0);
-    duk_call(ctx, 0);
-    duk_put_prop_string(ctx, -2, "uv");
-    // end inline duv_main
 
     loop_init_rtn temp = {
         .ctx = ctx,
@@ -63,9 +62,16 @@ loop_init_rtn loop_init()
     return temp;
 }
 
-void loop_run(uv_loop_t *loop)
+int loop_run(duk_context *ctx, uv_loop_t *theLoop, char *src)
 {
-    uv_run(loop, UV_RUN_DEFAULT);
+    duk_push_c_function(ctx, duv_main, 1);
+    duk_push_string(ctx, src);
+    if (duk_pcall(ctx, 1))
+    {
+        uv_loop_close(theLoop);
+        return 1;
+    }
+    return 0;
 }
 
 void loop_close(uv_loop_t *loop)

@@ -2,8 +2,10 @@ var myThing = { name: "yo wut up" };
 console.log("hi");
 console.log("myThing", JSON.stringify(myThing));
 console.log("before timeout");
+// throw new Error("ow!");
 setTimeout(function() {
   console.log("inside timeout");
+  throw new Error("ow");
   myThing.name = "yo!!!";
   var id = setTimeout(function() {
     console.log("inside second timeout");

@@ -1,8 +1,8 @@
 package duktape
 
 /*
-#cgo !windows CFLAGS: -std=c99 -O3 -Wall -Wno-unused-value -fomit-frame-pointer -fstrict-aliasing
-#cgo windows CFLAGS: -O3 -Wall -Wno-unused-value -fomit-frame-pointer -fstrict-aliasing
+#cgo !windows CFLAGS: -std=c99 -O3 -Wno-unused-value -fomit-frame-pointer -fstrict-aliasing
+#cgo windows CFLAGS: -O3 -Wno-unused-value -fomit-frame-pointer -fstrict-aliasing
 
 #include "duktape.h"
 #include "duk_logging.h"
@@ -896,13 +896,9 @@ func (d *Context) PevalStringPtr(ptrStruct *PtrStruct) error {
 	return d.castStringToError(result)
 }
 
-// See: http://duktape.org/api.html#duk_peval_string
-func (d *Context) PevalStringWithLoop(src string) error {
-	__src__ := C.CString(src)
-	result := int(C._duk_peval_string(d.duk_context, __src__))
-	C.loop_run(d.loop)
-	C.free(unsafe.Pointer(__src__))
-	C.loop_close(d.loop)
+func (d *Context) PevalStringPtrWithLoop(ptrStruct *PtrStruct) error {
+	__src__ := ptrStruct.StrPtr
+	result := int(C.loop_run(d.duk_context, d.loop, __src__))
 	return d.castStringToError(result)
 }
 

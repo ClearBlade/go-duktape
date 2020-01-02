@@ -14,8 +14,14 @@ extern "C"
         uv_loop_t *loop;
     } loop_init_rtn;
 
+    typedef struct
+    {
+        uv_loop_t *loop;
+        int64_t *timeout;
+    } stuff;
+
     extern loop_init_rtn loop_init();
-    extern void loop_run(uv_loop_t *loop);
+    extern int loop_run(duk_context *ctx, uv_loop_t *loop, char *src);
     extern void loop_close(uv_loop_t *loop);
 
 #if defined(__cplusplus)

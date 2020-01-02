@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 
-	"gopkg.in/olebedev/go-duktape.v3"
+	"github.com/clearblade/go-duktape"
 )
 
 func main() {
@@ -27,12 +26,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// fmt.Println("Calling PevalString")
-	// if err := ctx.PevalString(string(b)); err != nil {
-	// 	log.Fatal(err)
-	// }
-	fmt.Println("Calling PevalStringWithLoop")
-	if err := ctx.PevalStringWithLoop(string(b)); err != nil {
+	in := duktape.GetStringPtr(string(b))
+	if err := ctx.PevalStringPtrWithLoop(in); err != nil {
 		log.Fatal(err)
 	}
 }
