@@ -1,4 +1,6 @@
 var myThing = { name: "yo wut up" };
+console.log(typeof my_timers);
+console.log(typeof timer_id);
 console.log("hi");
 console.log("myThing", JSON.stringify(myThing));
 console.log("before timeout");
