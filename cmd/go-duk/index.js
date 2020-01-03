@@ -5,7 +5,7 @@ console.log("before timeout");
 // throw new Error("ow!");
 setTimeout(function() {
   console.log("inside timeout");
-  throw new Error("ow");
+  // throw new Error("ow");
   myThing.name = "yo!!!";
   var id = setTimeout(function() {
     console.log("inside second timeout");
@@ -15,6 +15,6 @@ setTimeout(function() {
     console.log("inside faster timeout");
     console.log("myThing", JSON.stringify(myThing));
     clearTimeout(id);
-  }, 1000);
+  }, 2000);
 }, 1000);
 console.log("after timeout");

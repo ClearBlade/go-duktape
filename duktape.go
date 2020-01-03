@@ -206,30 +206,33 @@ func (d *Context) PushMyTimers() {
 	  var context = {};
 	  var timer = uv.new_timer.call(context);
 	  my_timers[timer_id] = timer;
-	
-	  uv.timer_start(timer, delay, 0, function() {
-		uv.close.call(context, timer, function() {});
-		delete my_timers[timer_id];
-		cb_func();
-	  });
+	  uv.timer_start(
+		timer,
+		delay,
+		0,
+		function(id) {
+		  uv.close.call(context, timer, function() {});
+		  delete my_timers[id];
+		  cb_func();
+		}.bind(this, timer_id)
+	  );
 	
 	  return timer_id;
 	};
 	
-	clearTimeout = function(timer_id) {
-	  if (typeof timer_id !== "number") {
+	clearTimeout = function(id) {
+	  if (typeof id !== "number") {
 		throw new TypeError("timer ID is not a number");
 	  }
 	
-	  var timer = my_timers[timer_id];
+	  var timer = my_timers[id];
 	  if (typeof timer === "undefined") {
-		throw new ReferenceError("no timer with id " + "'" + timer_id + "'");
+		throw new ReferenceError("no timer with id " + "'" + id + "'");
 	  }
-	
 	  uv.timer_stop(timer);
 	  uv.close(timer);
-	  delete my_timers[timer_id];
-	};
+	  delete my_timers[id];
+	};	
 	`)
 }
 
