@@ -923,7 +923,7 @@ func (d *Context) castStringToError(result int) error {
 	fmt.Printf("Here 3\n")
 	err := &Error{}
 	for _, key := range []string{"name", "message", "fileName", "lineNumber", "stack"} {
-		fmt.Printf("Here 4: %s\n", key)
+		fmt.Printf("Here 4: %s and %+v\n", key, err)
 		d.GetPropString(-1, key)
 
 		switch key {
