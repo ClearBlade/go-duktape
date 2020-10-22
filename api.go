@@ -915,12 +915,15 @@ func (d *Context) PevalStringNoresult(src string) int {
 }
 
 func (d *Context) castStringToError(result int) error {
+	fmt.Printf("Here 1\n")
 	if result == 0 {
+		fmt.Printf("Here 2\n")
 		return nil
 	}
-
+	fmt.Printf("Here 3\n")
 	err := &Error{}
 	for _, key := range []string{"name", "message", "fileName", "lineNumber", "stack"} {
+		fmt.Printf("Here 4: %s\n", key)
 		d.GetPropString(-1, key)
 
 		switch key {
@@ -937,10 +940,10 @@ func (d *Context) castStringToError(result int) error {
 		case "stack":
 			err.Stack = d.SafeToString(-1)
 		}
-
+		fmt.Printf("Here 5\n")
 		d.Pop()
 	}
-
+	fmt.Printf("Here 6\n")
 	return err
 }
 
