@@ -793,7 +793,7 @@ func (d *Context) PcallProp(objIndex int, nargs int) int {
 // See: http://duktape.org/api.html#duk_pcompile
 func (d *Context) Pcompile(flags uint) error {
 	result := int(C._duk_pcompile(d.duk_context, C.duk_uint_t(flags)))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_file
@@ -801,7 +801,7 @@ func (d *Context) PcompileFile(flags uint, path string) error {
 	__path__ := C.CString(path)
 	result := int(C._duk_pcompile_file(d.duk_context, C.duk_uint_t(flags), __path__))
 	C.free(unsafe.Pointer(__path__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_lstring
@@ -809,7 +809,7 @@ func (d *Context) PcompileLstring(flags uint, src string, lenght int) error {
 	__src__ := C.CString(src)
 	result := int(C._duk_pcompile_lstring(d.duk_context, C.duk_uint_t(flags), __src__, C.duk_size_t(lenght)))
 	C.free(unsafe.Pointer(__src__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_lstring_filename
@@ -817,7 +817,7 @@ func (d *Context) PcompileLstringFilename(flags uint, src string, lenght int) er
 	__src__ := C.CString(src)
 	result := int(C._duk_pcompile_lstring_filename(d.duk_context, C.duk_uint_t(flags), __src__, C.duk_size_t(lenght)))
 	C.free(unsafe.Pointer(__src__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_string
@@ -825,7 +825,7 @@ func (d *Context) PcompileString(flags uint, src string) error {
 	__src__ := C.CString(src)
 	result := int(C._duk_pcompile_string(d.duk_context, C.duk_uint_t(flags), __src__))
 	C.free(unsafe.Pointer(__src__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_string_filename
@@ -833,13 +833,13 @@ func (d *Context) PcompileStringFilename(flags uint, src string) error {
 	__src__ := C.CString(src)
 	result := int(C._duk_pcompile_string_filename(d.duk_context, C.duk_uint_t(flags), __src__))
 	C.free(unsafe.Pointer(__src__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_peval
 func (d *Context) Peval() error {
 	result := int(C._duk_peval(d.duk_context))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_peval_file
@@ -847,7 +847,7 @@ func (d *Context) PevalFile(path string) error {
 	__path__ := C.CString(path)
 	result := int(C._duk_peval_file(d.duk_context, __path__))
 	C.free(unsafe.Pointer(__path__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_peval_file_noresult
@@ -863,7 +863,7 @@ func (d *Context) PevalLstring(src string, lenght int) error {
 	__src__ := C.CString(src)
 	result := int(C._duk_peval_lstring(d.duk_context, __src__, C.duk_size_t(lenght)))
 	C.free(unsafe.Pointer(__src__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 
 }
 
@@ -885,13 +885,19 @@ func (d *Context) PevalString(src string) error {
 	__src__ := C.CString(src)
 	result := int(C._duk_peval_string(d.duk_context, __src__))
 	C.free(unsafe.Pointer(__src__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 func (d *Context) PevalStringPtr(ptrStruct *PtrStruct) error {
 	__src__ := ptrStruct.StrPtr
 	result := int(C._duk_peval_string(d.duk_context, __src__))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
+}
+
+func (d *Context) PevalStringPtrGrowValStack(ptrStruct *PtrStruct) error {
+	__src__ := ptrStruct.StrPtr
+	result := int(C._duk_peval_string(d.duk_context, __src__))
+	return d.castStringToError(result, true)
 }
 
 func GetStringPtr(src string) *PtrStruct {
@@ -913,7 +919,7 @@ func (d *Context) PevalStringNoresult(src string) int {
 	return result
 }
 
-func (d *Context) castStringToError(result int) error {
+func (d *Context) castStringToError(result int, growValStack bool) error {
 	fmt.Printf("Here 1\n")
 	if result == 0 {
 		fmt.Printf("Here 2\n")
@@ -943,6 +949,10 @@ func (d *Context) castStringToError(result int) error {
 		d.Pop()
 	}
 	fmt.Printf("Here 6\n")
+	if err.Message == "valstack limit" {
+		d.RequireStack(1000000)
+		return nil
+	}
 	return err
 }
 
@@ -1543,7 +1553,7 @@ func (d *Context) LogVa(logLevel int, format string, values ...interface{}) {
 // See: http://duktape.org/api.html#duk_pnew
 func (d *Context) Pnew(nargs int) error {
 	result := int(C.duk_pnew(d.duk_context, C.duk_idx_t(nargs)))
-	return d.castStringToError(result)
+	return d.castStringToError(result, false)
 }
 
 // See: http://duktape.org/api.html#duk_push_buffer_object
