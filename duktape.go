@@ -6,6 +6,7 @@ package duktape
 #cgo linux LDFLAGS: -lm
 #cgo freebsd LDFLAGS: -lm
 #cgo openbsd LDFLAGS: -lm
+#cgo dragonfly LDFLAGS: -lm
 
 #include "duktape.h"
 #include "duk_logging.h"
@@ -219,7 +220,7 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Type, e.Message)
 }
 
-type Type int
+type Type uint
 
 func (t Type) IsNone() bool      { return t == TypeNone }
 func (t Type) IsUndefined() bool { return t == TypeUndefined }
