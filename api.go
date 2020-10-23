@@ -894,13 +894,6 @@ func (d *Context) PevalStringPtr(ptrStruct *PtrStruct) error {
 	return d.castStringToError(result)
 }
 
-func (d *Context) PevalStringPtrGrowValStack(ptrStruct *PtrStruct) error {
-	d.RequireStack(1)
-	__src__ := ptrStruct.StrPtr
-	result := int(C._duk_peval_string(d.duk_context, __src__))
-	return d.castStringToError(result)
-}
-
 func GetStringPtr(src string) *PtrStruct {
 	__src__ := C.CString(src)
 	return &PtrStruct{
@@ -921,15 +914,12 @@ func (d *Context) PevalStringNoresult(src string) int {
 }
 
 func (d *Context) castStringToError(result int) error {
-	fmt.Printf("Here 1\n")
 	if result == 0 {
-		fmt.Printf("Here 2\n")
 		return nil
 	}
-	fmt.Printf("Here 3\n")
 	err := &Error{}
 	for _, key := range []string{"name", "message", "fileName", "lineNumber", "stack"} {
-		fmt.Printf("Here 4: %s and name %q, fileName %q, lineNumber %q, stack %q, message %q\n", key, err.Type, err.FileName, err.LineNumber, err.Stack, err.Message)
+		fmt.Printf("Here: %s and name %q, fileName %q, lineNumber %q, stack %q, message %q\n", key, err.Type, err.FileName, err.LineNumber, err.Stack, err.Message)
 		d.GetPropString(-1, key)
 
 		switch key {
@@ -946,10 +936,8 @@ func (d *Context) castStringToError(result int) error {
 		case "stack":
 			err.Stack = d.SafeToString(-1)
 		}
-		fmt.Printf("Here 5\n")
 		d.Pop()
 	}
-	fmt.Printf("Here 6\n")
 	return err
 }
 
