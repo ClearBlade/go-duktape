@@ -15644,31 +15644,37 @@ DUK_EXTERNAL duk_int_t duk_eval_raw(duk_hthread *thr, const char *src_buffer, du
 
 	/* [ ... source? filename? ] (depends on flags) */
 
+	duk_tval *valstack;                     /* start of valstack allocation */
+	duk_tval *valstack_end;                 /* end of valstack reservation/guarantee (exclusive) */
+	duk_tval *valstack_alloc_end;           /* end of valstack allocation */
+	duk_tval *valstack_bottom;              /* bottom of current frame */
+	duk_tval *valstack_top; 
+	printf("YOLOOOOOOOO:\nValstack end is %ld\nValstack alloc end is %ld\nValstack bottom is %ld\nValstack top is %ld\nTop is %ld\nSize is %ld\n", thr->valstack_end, thr->valstack_alloc_end, thr->valstack_bottom, thr->valstack_top, (long) (thr->valstack_top - thr->valstack), (long) (thr->valstack_top - thr->valstack_bottom));
 	rc = duk_compile_raw(thr, src_buffer, src_length, flags | DUK_COMPILE_EVAL);  /* may be safe, or non-safe depending on flags */
 
 	/* [ ... closure/error ] */
-
+	printf("YOLOOOOOOOO 1:\nValstack end is %ld\nValstack alloc end is %ld\nValstack bottom is %ld\nValstack top is %ld\nTop is %ld\nSize is %ld\n", thr->valstack_end, thr->valstack_alloc_end, thr->valstack_bottom, thr->valstack_top, (long) (thr->valstack_top - thr->valstack), (long) (thr->valstack_top - thr->valstack_bottom));
 	if (rc != DUK_EXEC_SUCCESS) {
 		rc = DUK_EXEC_ERROR;
 		goto got_rc;
 	}
 
 	duk_push_global_object(thr);  /* explicit 'this' binding, see GH-164 */
-
+	printf("YOLOOOOOOOO 2:\nValstack end is %ld\nValstack alloc end is %ld\nValstack bottom is %ld\nValstack top is %ld\nTop is %ld\nSize is %ld\n", thr->valstack_end, thr->valstack_alloc_end, thr->valstack_bottom, thr->valstack_top, (long) (thr->valstack_top - thr->valstack), (long) (thr->valstack_top - thr->valstack_bottom));
 	if (flags & DUK_COMPILE_SAFE) {
 		rc = duk_pcall_method(thr, 0);
 	} else {
 		duk_call_method(thr, 0);
 		rc = DUK_EXEC_SUCCESS;
 	}
-
+	printf("YOLOOOOOOOO 3:\nValstack end is %ld\nValstack alloc end is %ld\nValstack bottom is %ld\nValstack top is %ld\nTop is %ld\nSize is %ld\n", thr->valstack_end, thr->valstack_alloc_end, thr->valstack_bottom, thr->valstack_top, (long) (thr->valstack_top - thr->valstack), (long) (thr->valstack_top - thr->valstack_bottom));
 	/* [ ... result/error ] */
 
  got_rc:
 	if (flags & DUK_COMPILE_NORESULT) {
 		duk_pop(thr);
 	}
-
+	printf("YOLOOOOOOOO 4:\nValstack end is %ld\nValstack alloc end is %ld\nValstack bottom is %ld\nValstack top is %ld\nTop is %ld\nSize is %ld\n", thr->valstack_end, thr->valstack_alloc_end, thr->valstack_bottom, thr->valstack_top, (long) (thr->valstack_top - thr->valstack), (long) (thr->valstack_top - thr->valstack_bottom));
 	return rc;
 }
 
@@ -18382,10 +18388,9 @@ DUK_LOCAL DUK_COLD DUK_NOINLINE duk_bool_t duk__resize_valstack(duk_hthread *thr
 DUK_LOCAL DUK_COLD DUK_NOINLINE duk_bool_t duk__valstack_grow(duk_hthread *thr, duk_size_t min_bytes, duk_bool_t throw_on_error) {
 	duk_size_t min_size;
 	duk_size_t new_size;
-
 	DUK_ASSERT(min_bytes / sizeof(duk_tval) * sizeof(duk_tval) == min_bytes);
 	min_size = min_bytes / sizeof(duk_tval);  /* from bytes to slots */
-
+	printf("CALLED GROW with size %ld\n", min_size);
 #if defined(DUK_USE_VALSTACK_GROW_SHIFT)
 	/* New size is minimum size plus a proportional slack, e.g. shift of
 	 * 2 means a 25% slack.
@@ -18403,6 +18408,7 @@ DUK_LOCAL DUK_COLD DUK_NOINLINE duk_bool_t duk__valstack_grow(duk_hthread *thr, 
 		 * plan limit accordingly.
 		 */
 		if (throw_on_error) {
+			printf("HAHAHAHA: New size is %ld\n", new_size);
 			DUK_ERROR_RANGE(thr, DUK_STR_VALSTACK_LIMIT);
 			DUK_WO_NORETURN(return 0;);
 		}
