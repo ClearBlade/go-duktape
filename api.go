@@ -919,7 +919,6 @@ func (d *Context) castStringToError(result int) error {
 	}
 	err := &Error{}
 	for _, key := range []string{"name", "message", "fileName", "lineNumber", "stack"} {
-		fmt.Printf("Here: %s and name %q, fileName %q, lineNumber %q, stack %q, message %q\n", key, err.Type, err.FileName, err.LineNumber, err.Stack, err.Message)
 		d.GetPropString(-1, key)
 
 		switch key {
