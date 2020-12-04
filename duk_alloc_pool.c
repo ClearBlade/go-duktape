@@ -11,10 +11,10 @@
 #include "duk_alloc_pool.h"
 
 /* Define to enable some debug printfs. */
-/* #define DUK_ALLOC_POOL_DEBUG */
+#define DUK_ALLOC_POOL_DEBUG
 
 /* Define to enable approximate waste tracking. */
-/* #define DUK_ALLOC_POOL_TRACK_WASTE */
+#define DUK_ALLOC_POOL_TRACK_WASTE
 
 /* Define to track global highwater for used and waste bytes.  VERY SLOW, only
  * useful for manual testing.

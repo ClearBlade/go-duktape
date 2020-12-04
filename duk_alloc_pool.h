@@ -10,9 +10,9 @@ extern "C" {
 /* 32-bit (big endian) marker used at the end of pool entries so that wasted
  * space can be detected.  Waste tracking must be enabled explicitly.
  */
-#if defined(DUK_ALLOC_POOL_TRACK_WASTE)
+/* #if defined(DUK_ALLOC_POOL_TRACK_WASTE) */
 #define DUK_ALLOC_POOL_WASTE_MARKER  0xedcb2345UL
-#endif
+/* #endif */
 
 /* Pointer compression with ROM strings/objects:
  *
