@@ -13310,6 +13310,7 @@ DUK_INTERNAL duk_uint8_t duk_class_number_to_stridx[32] = {
 DUK_INTERNAL void *duk_default_alloc_function(void *udata, duk_size_t size) {
 	void *res;
 	DUK_UNREF(udata);
+    fprintf(stderr, "DUK_MALLOC: %ld\n", size);
 	res = DUK_ANSI_MALLOC(size);
 	DUK_DDD(DUK_DDDPRINT("default alloc function: %lu -> %p",
 	                     (unsigned long) size, (void *) res));

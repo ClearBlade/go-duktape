@@ -58,6 +58,8 @@ void *duk_alloc_pool_init(char *buffer,
 	size_t total;
 	char *p;
 
+    fprintf(stderr, "DUK_ALLOC_POOL_INIT\n");
+
 	/* XXX: check that 'size' is not too large when using pointer
 	 * compression.
 	 */
