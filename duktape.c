@@ -13311,7 +13311,7 @@ DUK_INTERNAL void *duk_default_alloc_function(void *udata, duk_size_t size) {
 	void *res;
 	DUK_UNREF(udata);
 	res = DUK_ANSI_MALLOC(size);
-    fprintf(stderr, "DUK_MALLOC: %p:%lu\n", res, size);
+    fprintf(stderr, "DUKMEM|MALLOC|%p|%lu\n", res, size);
 	DUK_DDD(DUK_DDDPRINT("default alloc function: %lu -> %p",
 	                     (unsigned long) size, (void *) res));
 	return res;
@@ -13321,7 +13321,7 @@ DUK_INTERNAL void *duk_default_realloc_function(void *udata, void *ptr, duk_size
 	void *res;
 	DUK_UNREF(udata);
 	res = DUK_ANSI_REALLOC(ptr, newsize);
-    fprintf(stderr, "DUK_REALLOC: %p:%p:%lu\n", ptr, res, newsize);
+    fprintf(stderr, "DUKMEM|REALLOC|%p|%p|%lu\n", ptr, res, newsize);
 	DUK_DDD(DUK_DDDPRINT("default realloc function: %p %lu -> %p",
 	                     (void *) ptr, (unsigned long) newsize, (void *) res));
 	return res;
@@ -13330,7 +13330,7 @@ DUK_INTERNAL void *duk_default_realloc_function(void *udata, void *ptr, duk_size
 DUK_INTERNAL void duk_default_free_function(void *udata, void *ptr) {
 	DUK_DDD(DUK_DDDPRINT("default free function: %p", (void *) ptr));
 	DUK_UNREF(udata);
-    fprintf(stderr, "DUK_FREE: %p\n", ptr);
+    fprintf(stderr, "DUKMEM|FREE|%p\n", ptr);
 	DUK_ANSI_FREE(ptr);
 }
 #endif  /* DUK_USE_PROVIDE_DEFAULT_ALLOC_FUNCTIONS */
