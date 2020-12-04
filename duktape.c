@@ -15634,6 +15634,7 @@ DUK_EXTERNAL duk_int_t duk_eval_raw(duk_hthread *thr, const char *src_buffer, du
 	duk_int_t rc;
 
 	DUK_ASSERT_API_ENTRY(thr);
+    fprintf(stderr, "DUKDUKDUK EVALUATING\n");
 
 	/* Note: strictness is *not* inherited from the current Duktape/C.
 	 * This would be confusing because the current strictness state
