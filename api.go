@@ -918,6 +918,9 @@ func (d *Context) castStringToError(result int) error {
 	if result == 0 {
 		return nil
 	}
+	if !d.IsObjectCoercible(-1) {
+		return &Error{Message: "Error is not object coercible"}
+	}
 
 	err := &Error{}
 	for _, key := range []string{"name", "message", "fileName", "lineNumber", "stack"} {
