@@ -918,6 +918,7 @@ func (d *Context) castStringToError(result int) error {
 	if result == 0 {
 		return nil
 	}
+	fmt.Printf("TEST: %d %d\n", d.GetTop(), d.GetTopIndex())
 	if !d.IsObjectCoercible(-1) {
 		return &Error{Message: "Error is not object coercible"}
 	}
