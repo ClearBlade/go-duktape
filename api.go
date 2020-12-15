@@ -918,6 +918,12 @@ func (d *Context) castStringToError(result int) error {
 	if result == 0 {
 		return nil
 	}
+	if !d.IsValidIndex(-1) || d.GetTop() <= 0 {
+		return &Error{Message: "Error is not on the stack"}
+	}
+	if !d.IsObjectCoercible(-1) {
+		return &Error{Message: "Error is not object coercible"}
+	}
 
 	err := &Error{}
 	for _, key := range []string{"name", "message", "fileName", "lineNumber", "stack"} {
