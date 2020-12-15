@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"sync"
 	"unsafe"
 )
@@ -216,7 +217,15 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("%s: %s", e.Type, e.Message)
+	var sb strings.Builder
+	if e.Type != "" {
+		fmt.Fprintf(sb, "%s: ", e.Type)
+	}
+	sb.WriteString(e.Message)
+	if e.LineNumber != 0 {
+		fmt.Fprintf(sb, " (line %d)", e.LineNumber)
+	}
+	return sb.String()
 }
 
 type Type int
