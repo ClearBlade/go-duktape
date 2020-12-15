@@ -219,11 +219,11 @@ type Error struct {
 func (e *Error) Error() string {
 	var sb strings.Builder
 	if e.Type != "" {
-		fmt.Fprintf(sb, "%s: ", e.Type)
+		fmt.Fprintf(&sb, "%s: ", e.Type)
 	}
 	sb.WriteString(e.Message)
 	if e.LineNumber != 0 {
-		fmt.Fprintf(sb, " (line %d)", e.LineNumber)
+		fmt.Fprintf(&sb, " (line %d)", e.LineNumber)
 	}
 	return sb.String()
 }
