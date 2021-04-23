@@ -7,10 +7,6 @@ import (
 	"unsafe"
 )
 
-var (
-	StrPool = NewStrPool()
-)
-
 type strPool struct {
 	pool []*cstr
 	*sync.Mutex

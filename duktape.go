@@ -47,6 +47,7 @@ type context struct {
 	duk_context *C.duk_context
 	fnIndex     *functionIndex
 	timerIndex  *timerIndex
+	strPool     *strPool
 }
 
 // New returns plain initialized duktape context object
@@ -57,6 +58,7 @@ func New() *Context {
 			duk_context: C.duk_create_heap(nil, nil, nil, nil, nil),
 			fnIndex:     newFunctionIndex(),
 			timerIndex:  &timerIndex{},
+			strPool:     NewStrPool(),
 		},
 	}
 
@@ -76,6 +78,7 @@ func NewWithDeadline(epochDeadline *int64) *Context {
 			duk_context: C.duk_create_heap(nil, nil, nil, p, nil),
 			fnIndex:     newFunctionIndex(),
 			timerIndex:  &timerIndex{},
+			strPool:     NewStrPool(),
 		},
 	}
 
