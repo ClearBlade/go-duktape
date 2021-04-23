@@ -3,13 +3,11 @@ package duktape
 import "C"
 import (
 	"fmt"
-	"sync"
 	"unsafe"
 )
 
 type strPool struct {
 	pool []*cstr
-	*sync.Mutex
 }
 
 type cstr struct {
@@ -21,7 +19,6 @@ type cstr struct {
 func NewStrPool() *strPool {
 	return &strPool{
 		pool:  make([]*cstr, 0),
-		Mutex: &sync.Mutex{},
 	}
 }
 
@@ -31,8 +28,6 @@ var (
 )
 
 func (s *strPool) get(cap int) *cstr {
-	s.Lock()
-	defer s.Unlock()
 	for i := 0; i < len(s.pool); i++ {
 		if !s.pool[i].inuse && s.pool[i].cap >= cap {
 			PoolReuseCount++
