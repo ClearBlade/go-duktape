@@ -1,4 +1,4 @@
-module go-duktape
+module github.com/clearblade/go-duktape
 
 go 1.16
 
