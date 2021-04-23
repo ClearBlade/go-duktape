@@ -2,7 +2,6 @@ package duktape
 
 import "C"
 import (
-	"fmt"
 	"unsafe"
 )
 
@@ -18,25 +17,17 @@ type cstr struct {
 
 func NewStrPool() *strPool {
 	return &strPool{
-		pool:  make([]*cstr, 0),
+		pool: make([]*cstr, 0),
 	}
 }
-
-var (
-	PoolReuseCount int
-	PoolAllocCount int
-)
 
 func (s *strPool) get(cap int) *cstr {
 	for i := 0; i < len(s.pool); i++ {
 		if !s.pool[i].inuse && s.pool[i].cap >= cap {
-			PoolReuseCount++
 			s.pool[i].inuse = true
 			return s.pool[i]
 		}
 	}
-	PoolAllocCount++
-	fmt.Printf("new with cap %d\n", cap)
 	ret := &cstr{
 		p:     C.malloc(C.ulong(cap)),
 		cap:   cap,
