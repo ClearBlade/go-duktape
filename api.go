@@ -1099,9 +1099,9 @@ func (d *Context) PushObject() int {
 
 // See: http://duktape.org/api.html#duk_push_string
 func (d *Context) PushString(str string) {
-	cs := d.strPool.CString(str)
-	C.duk_push_string(d.duk_context, (*C.char)(cs.p))
-	cs.inuse = false
+	cs := d.strPool.GetString(str)
+	C.duk_push_string(d.duk_context, cs.CString())
+	d.strPool.FreeString(cs)
 }
 
 // See: http://duktape.org/api.html#duk_push_string_file
@@ -1170,9 +1170,9 @@ func (d *Context) PutPropIndex(objIndex int, arrIndex uint) bool {
 
 // See: http://duktape.org/api.html#duk_put_prop_string
 func (d *Context) PutPropString(objIndex int, key string) bool {
-	cs := d.strPool.CString(key)
-	result := int(C.duk_put_prop_string(d.duk_context, C.duk_idx_t(objIndex), (*C.char)(cs.p))) == 1
-	cs.inuse = false
+	cs := d.strPool.GetString(key)
+	result := int(C.duk_put_prop_string(d.duk_context, C.duk_idx_t(objIndex), cs.CString())) == 1
+	d.strPool.FreeString(cs)
 	return result
 }
 

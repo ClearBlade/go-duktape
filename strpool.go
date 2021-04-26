@@ -15,9 +15,15 @@ type cstr struct {
 	inuse bool
 }
 
+func (cs *cstr) CString() *C.char {
+	return (*C.char)(cs.p)
+}
+
 func NewStrPool() *strPool {
 	return &strPool{
-		pool: make([]*cstr, 0),
+		pool: []*cstr{
+			{p: C.malloc(256), cap: 256},
+		},
 	}
 }
 
@@ -37,10 +43,14 @@ func (s *strPool) get(cap int) *cstr {
 	return ret
 }
 
-func (s *strPool) CString(str string) *cstr {
+func (s *strPool) GetString(str string) *cstr {
 	cs := s.get(len(str) + 1)
 	ss := (*[1 << 30]byte)(cs.p)
 	copy(ss[:], str)
 	ss[len(str)] = 0
 	return cs
+}
+
+func (s *strPool) FreeString(cs *cstr) {
+	cs.inuse = false
 }
