@@ -209,6 +209,7 @@ func (d *Context) getFunctionPtrs() (unsafe.Pointer, *Context) {
 func (d *Context) Destroy() {
 	d.fnIndex.destroy()
 	contexts.delete(d)
+	d.strPool.destroy()
 }
 
 type Error struct {

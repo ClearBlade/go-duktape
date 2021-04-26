@@ -1,7 +1,11 @@
 package duktape
 
+/*
+#include <stdlib.h>
+*/
 import "C"
 import (
+	"math"
 	"unsafe"
 )
 
@@ -21,9 +25,7 @@ func (cs *cstr) CString() *C.char {
 
 func NewStrPool() *strPool {
 	return &strPool{
-		pool: []*cstr{
-			{p: C.malloc(256), cap: 256},
-		},
+		pool: []*cstr{},
 	}
 }
 
@@ -34,9 +36,11 @@ func (s *strPool) get(cap int) *cstr {
 			return s.pool[i]
 		}
 	}
+	// give them mem with cap that's the next power of 2
+	normalizedCap := 2 << int(math.Log2(float64(cap)))
 	ret := &cstr{
-		p:     C.malloc(C.ulong(cap)),
-		cap:   cap,
+		p:     C.malloc(C.ulong(normalizedCap)),
+		cap:   normalizedCap,
 		inuse: true,
 	}
 	s.pool = append(s.pool, ret)
@@ -53,4 +57,10 @@ func (s *strPool) GetString(str string) *cstr {
 
 func (s *strPool) FreeString(cs *cstr) {
 	cs.inuse = false
+}
+
+func (s *strPool) destroy() {
+	for i := 0; i < len(s.pool); i++ {
+		C.free(s.pool[i].p)
+	}
 }
