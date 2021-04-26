@@ -5,31 +5,53 @@ package duktape
 */
 import "C"
 import (
+	"fmt"
 	"math"
+	"strings"
 	"unsafe"
 )
 
-type strPool struct {
-	pool []*cstr
+func (d *Context) GetStringPtr(src string) *StringPointer {
+	return d.strPool.GetStringPointer(src)
 }
 
-type cstr struct {
+func (d *Context) FreeStringPtr(sp *StringPointer) {
+	d.strPool.FreeStringPointer(sp)
+}
+
+type strPool struct {
+	pool []*StringPointer
+}
+
+type StringPointer struct {
 	p     unsafe.Pointer
 	cap   int
 	inuse bool
 }
 
-func (cs *cstr) CString() *C.char {
-	return (*C.char)(cs.p)
+func (sp *StringPointer) CString() *C.char {
+	return (*C.char)(sp.p)
+}
+
+func (sp *StringPointer) String() string {
+	return fmt.Sprintf("SP(cap: %d;inuse: %t)", sp.cap, sp.inuse)
 }
 
 func NewStrPool() *strPool {
 	return &strPool{
-		pool: []*cstr{},
+		pool: []*StringPointer{},
 	}
 }
 
-func (s *strPool) get(cap int) *cstr {
+func (s *strPool) String() string {
+	pointers := make([]string, len(s.pool))
+	for i, sp := range s.pool {
+		pointers[i] = sp.String()
+	}
+	return fmt.Sprintf("POOL{%s}", strings.Join(pointers, ", "))
+}
+
+func (s *strPool) get(cap int) *StringPointer {
 	for i := 0; i < len(s.pool); i++ {
 		if !s.pool[i].inuse && s.pool[i].cap >= cap {
 			s.pool[i].inuse = true
@@ -38,7 +60,7 @@ func (s *strPool) get(cap int) *cstr {
 	}
 	// give them mem with cap that's the next power of 2
 	normalizedCap := 2 << int(math.Log2(float64(cap)))
-	ret := &cstr{
+	ret := &StringPointer{
 		p:     C.malloc(C.ulong(normalizedCap)),
 		cap:   normalizedCap,
 		inuse: true,
@@ -47,16 +69,16 @@ func (s *strPool) get(cap int) *cstr {
 	return ret
 }
 
-func (s *strPool) GetString(str string) *cstr {
-	cs := s.get(len(str) + 1)
-	ss := (*[1 << 30]byte)(cs.p)
+func (s *strPool) GetStringPointer(str string) *StringPointer {
+	sp := s.get(len(str) + 1)
+	ss := (*[1 << 30]byte)(sp.p)
 	copy(ss[:], str)
 	ss[len(str)] = 0
-	return cs
+	return sp
 }
 
-func (s *strPool) FreeString(cs *cstr) {
-	cs.inuse = false
+func (s *strPool) FreeStringPointer(sp *StringPointer) {
+	sp.inuse = false
 }
 
 func (s *strPool) destroy() {

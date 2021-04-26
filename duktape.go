@@ -29,16 +29,38 @@ var reFuncName = regexp.MustCompile("^[a-z_][a-z0-9_]*([A-Z_][a-z0-9_]*)*$")
 
 const (
 	goFunctionPtrProp = "\xff" + "goFunctionPtrProp"
-	goContextPtrProp  = "\xff" + "goContextPtrProp"
 )
+
+var contexts = &contextStore{
+	store:   map[*C.duk_context]*Context{},
+	RWMutex: &sync.RWMutex{},
+}
+
+type contextStore struct {
+	store map[*C.duk_context]*Context
+	*sync.RWMutex
+}
+
+func (c *contextStore) get(ctx *C.duk_context) *Context {
+	c.RLock()
+	defer c.RUnlock()
+	return c.store[ctx]
+}
+
+func (c *contextStore) add(ctx *Context) {
+	c.Lock()
+	defer c.Unlock()
+	c.store[ctx.duk_context] = ctx
+}
+
+func (c *contextStore) delete(ctx *Context) {
+	c.Lock()
+	defer c.Unlock()
+	delete(c.store, ctx.duk_context)
+}
 
 type Context struct {
 	*context
-}
-
-// transmute replaces the value from Context with the value of pointer
-func (c *Context) transmute(p unsafe.Pointer) {
-	*c = *(*Context)(p)
 }
 
 // this is a pojo containing only the values of the Context
@@ -68,6 +90,8 @@ func New() *Context {
 	C.duk_module_duktape_init(ctx)
 	C.duk_console_init(ctx, 0)
 
+	contexts.add(d)
+
 	return d
 }
 
@@ -87,6 +111,8 @@ func NewWithDeadline(epochDeadline *int64) *Context {
 	C.duk_print_alert_init(ctx, 0)
 	C.duk_module_duktape_init(ctx)
 	C.duk_console_init(ctx, 0)
+
+	contexts.add(d)
 
 	return d
 
@@ -116,6 +142,7 @@ func NewWithFlags(flags *Flags) *Context {
 			duk_context: C.duk_create_heap(nil, nil, nil, nil, nil),
 			fnIndex:     newFunctionIndex(),
 			timerIndex:  &timerIndex{},
+			strPool:     NewStrPool(),
 		},
 	}
 
@@ -125,11 +152,13 @@ func NewWithFlags(flags *Flags) *Context {
 	C.duk_module_duktape_init(ctx)
 	C.duk_console_init(ctx, C.duk_uint_t(flags.Console))
 
+	contexts.add(d)
+
 	return d
 }
 
 func contextFromPointer(ctx *C.duk_context) *Context {
-	return &Context{&context{duk_context: ctx}}
+	return contexts.get(ctx)
 }
 
 // PushGlobalGoFunction push the given function into duktape global object
@@ -152,20 +181,15 @@ func (d *Context) PushGlobalGoFunction(name string, fn func(*Context) int) (int,
 // index (relative to stack bottom) of the pushed function
 func (d *Context) PushGoFunction(fn func(*Context) int) int {
 	funPtr := d.fnIndex.add(fn)
-	ctxPtr := contexts.add(d)
 
 	idx := d.PushCFunction((*[0]byte)(C.goFunctionCall), C.DUK_VARARGS)
 	d.PushCFunction((*[0]byte)(C.goFinalizeCall), 1)
 	d.PushPointer(funPtr)
 	d.PutPropString(-2, goFunctionPtrProp)
-	d.PushPointer(ctxPtr)
-	d.PutPropString(-2, goContextPtrProp)
 	d.SetFinalizer(-2)
 
 	d.PushPointer(funPtr)
 	d.PutPropString(-2, goFunctionPtrProp)
-	d.PushPointer(ctxPtr)
-	d.PutPropString(-2, goContextPtrProp)
 
 	return idx
 }
@@ -173,36 +197,24 @@ func (d *Context) PushGoFunction(fn func(*Context) int) int {
 //export goFunctionCall
 func goFunctionCall(cCtx *C.duk_context) C.duk_ret_t {
 	d := contextFromPointer(cCtx)
-
-	funPtr, ctx := d.getFunctionPtrs()
-	d.transmute(unsafe.Pointer(ctx))
-
+	funPtr := d.getFunctionPtr()
 	result := d.fnIndex.get(funPtr)(d)
-
 	return C.duk_ret_t(result)
 }
 
 //export goFinalizeCall
 func goFinalizeCall(cCtx *C.duk_context) {
 	d := contextFromPointer(cCtx)
-
-	funPtr, ctx := d.getFunctionPtrs()
-	d.transmute(unsafe.Pointer(ctx))
-
+	funPtr := d.getFunctionPtr()
 	d.fnIndex.delete(funPtr)
 }
 
-func (d *Context) getFunctionPtrs() (unsafe.Pointer, *Context) {
+func (d *Context) getFunctionPtr() unsafe.Pointer {
 	d.PushCurrentFunction()
 	d.GetPropString(-1, goFunctionPtrProp)
 	funPtr := d.GetPointer(-1)
-
-	d.Pop()
-
-	d.GetPropString(-1, goContextPtrProp)
-	ctx := contexts.get(d.GetPointer(-1))
-	d.Pop2()
-	return funPtr, ctx
+	d.Pop2() // funPtr and function
+	return funPtr
 }
 
 // Destroy destroy all the references to the functions and freed the pointers
@@ -324,67 +336,9 @@ func (i *functionIndex) delete(ptr unsafe.Pointer) {
 func (i *functionIndex) destroy() {
 	i.Lock()
 
-	for ptr, _ := range i.functions {
+	for ptr := range i.functions {
 		delete(i.functions, ptr)
 		C.free(ptr)
 	}
 	i.Unlock()
-}
-
-type ctxIndex struct {
-	sync.RWMutex
-	ctxs map[unsafe.Pointer]*Context
-}
-
-func (ci *ctxIndex) add(ctx *Context) unsafe.Pointer {
-
-	ci.RLock()
-	for ptr, ctxPtr := range ci.ctxs {
-		if ctxPtr == ctx {
-			ci.RUnlock()
-			return ptr
-		}
-	}
-	ci.RUnlock()
-
-	ci.Lock()
-	for ptr, ctxPtr := range ci.ctxs {
-		if ctxPtr == ctx {
-			ci.Unlock()
-			return ptr
-		}
-	}
-	ptr := C.malloc(1)
-	ci.ctxs[ptr] = ctx
-	ci.Unlock()
-
-	return ptr
-}
-
-func (ci *ctxIndex) get(ptr unsafe.Pointer) *Context {
-	ci.RLock()
-	ctx := ci.ctxs[ptr]
-	ci.RUnlock()
-	return ctx
-}
-
-func (ci *ctxIndex) delete(ctx *Context) {
-	ci.Lock()
-	for ptr, ctxPtr := range ci.ctxs {
-		if ctxPtr == ctx {
-			delete(ci.ctxs, ptr)
-			C.free(ptr)
-			ci.Unlock()
-			return
-		}
-	}
-	panic(fmt.Sprintf("context (%p) doesn't exist", ctx))
-}
-
-var contexts *ctxIndex
-
-func init() {
-	contexts = &ctxIndex{
-		ctxs: make(map[unsafe.Pointer]*Context),
-	}
 }

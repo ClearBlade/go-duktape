@@ -171,10 +171,6 @@ import (
 	"unsafe"
 )
 
-type PtrStruct struct {
-	StrPtr *C.char
-}
-
 // See: http://duktape.org/api.html#duk_alloc
 func (d *Context) Alloc(size int) unsafe.Pointer {
 	return C.duk_alloc(d.duk_context, C.duk_size_t(size))
@@ -245,37 +241,37 @@ func (d *Context) Compile(flags uint) {
 
 // See: http://duktape.org/api.html#duk_compile_file
 func (d *Context) CompileFile(flags uint, path string) {
-	__path__ := C.CString(path)
-	C._duk_compile_file(d.duk_context, C.duk_uint_t(flags), __path__)
-	C.free(unsafe.Pointer(__path__))
+	sp := d.strPool.GetStringPointer(path)
+	C._duk_compile_file(d.duk_context, C.duk_uint_t(flags), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_compile_lstring
 func (d *Context) CompileLstring(flags uint, src string, len int) {
-	__src__ := C.CString(src)
-	C._duk_compile_lstring(d.duk_context, C.duk_uint_t(flags), __src__, C.duk_size_t(len))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	C._duk_compile_lstring(d.duk_context, C.duk_uint_t(flags), sp.CString(), C.duk_size_t(len))
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_compile_lstring_filename
 func (d *Context) CompileLstringFilename(flags uint, src string, len int) {
-	__src__ := C.CString(src)
-	C._duk_compile_lstring_filename(d.duk_context, C.duk_uint_t(flags), __src__, C.duk_size_t(len))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	C._duk_compile_lstring_filename(d.duk_context, C.duk_uint_t(flags), sp.CString(), C.duk_size_t(len))
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_compile_string
 func (d *Context) CompileString(flags uint, src string) {
-	__src__ := C.CString(src)
-	C._duk_compile_string(d.duk_context, C.duk_uint_t(flags), __src__)
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	C._duk_compile_string(d.duk_context, C.duk_uint_t(flags), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_compile_string_filename
 func (d *Context) CompileStringFilename(flags uint, src string) {
-	__src__ := C.CString(src)
-	C._duk_compile_string_filename(d.duk_context, C.duk_uint_t(flags), __src__)
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	C._duk_compile_string_filename(d.duk_context, C.duk_uint_t(flags), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_concat
@@ -300,9 +296,9 @@ func (d *Context) DelPropIndex(objIndex int, arrIndex uint) bool {
 
 // See: http://duktape.org/api.html#duk_del_prop_string
 func (d *Context) DelPropString(objIndex int, key string) bool {
-	__key__ := C.CString(key)
-	result := int(C.duk_del_prop_string(d.duk_context, C.duk_idx_t(objIndex), __key__)) == 1
-	C.free(unsafe.Pointer(__key__))
+	sp := d.strPool.GetStringPointer(key)
+	result := int(C.duk_del_prop_string(d.duk_context, C.duk_idx_t(objIndex), sp.CString())) == 1
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
@@ -354,17 +350,17 @@ func (d *Context) Equals(index1 int, index2 int) bool {
 //
 // See: http://duktape.org/api.html#duk_error
 func (d *Context) Error(errCode int, str string) {
-	__str__ := C.CString(str)
-	C._duk_error(d.duk_context, C.duk_errcode_t(errCode), __str__)
-	C.free(unsafe.Pointer(__str__))
+	sp := d.strPool.GetStringPointer(str)
+	C._duk_error(d.duk_context, C.duk_errcode_t(errCode), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 func (d *Context) ErrorRaw(errCode int, filename string, line int, errMsg string) {
-	__filename__ := C.CString(filename)
-	__errMsg__ := C.CString(errMsg)
-	C._duk_error_raw(d.duk_context, C.duk_errcode_t(errCode), __filename__, C.duk_int_t(line), __errMsg__)
-	C.free(unsafe.Pointer(__filename__))
-	C.free(unsafe.Pointer(__errMsg__))
+	spFile := d.strPool.GetStringPointer(filename)
+	spErr := d.strPool.GetStringPointer(errMsg)
+	C._duk_error_raw(d.duk_context, C.duk_errcode_t(errCode), spFile.CString(), C.duk_int_t(line), spErr.CString())
+	d.strPool.FreeStringPointer(spFile)
+	d.strPool.FreeStringPointer(spErr)
 }
 
 // Errorf pushes a new Error object to the stack and throws it. This will call
@@ -373,10 +369,9 @@ func (d *Context) ErrorRaw(errCode int, filename string, line int, errMsg string
 //
 // See: http://duktape.org/api.html#duk_error
 func (d *Context) Errorf(errCode int, format string, a ...interface{}) {
-	str := fmt.Sprintf(format, a...)
-	__str__ := C.CString(str)
-	C._duk_error(d.duk_context, C.duk_errcode_t(errCode), __str__)
-	C.free(unsafe.Pointer(__str__))
+	sp := d.strPool.GetStringPointer(fmt.Sprintf(format, a...))
+	C._duk_error(d.duk_context, C.duk_errcode_t(errCode), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_eval
@@ -386,30 +381,30 @@ func (d *Context) Eval() {
 
 // See: http://duktape.org/api.html#duk_eval_file
 func (d *Context) EvalFile(path string) {
-	__path__ := C.CString(path)
-	C._duk_eval_file(d.duk_context, __path__)
-	C.free(unsafe.Pointer(__path__))
+	sp := d.strPool.GetStringPointer(path)
+	C._duk_eval_file(d.duk_context, sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_eval_file_noresult
 func (d *Context) EvalFileNoresult(path string) {
-	__path__ := C.CString(path)
-	C._duk_eval_file_noresult(d.duk_context, __path__)
-	C.free(unsafe.Pointer(__path__))
+	sp := d.strPool.GetStringPointer(path)
+	C._duk_eval_file_noresult(d.duk_context, sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_eval_lstring
 func (d *Context) EvalLstring(src string, len int) {
-	__src__ := C.CString(src)
-	C._duk_eval_lstring(d.duk_context, __src__, C.duk_size_t(len))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	C._duk_eval_lstring(d.duk_context, sp.CString(), C.duk_size_t(len))
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_eval_lstring_noresult
 func (d *Context) EvalLstringNoresult(src string, len int) {
-	__src__ := C.CString(src)
-	C._duk_eval_lstring_noresult(d.duk_context, __src__, C.duk_size_t(len))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	C._duk_eval_lstring_noresult(d.duk_context, sp.CString(), C.duk_size_t(len))
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_eval_noresult
@@ -419,23 +414,23 @@ func (d *Context) EvalNoresult() {
 
 // See: http://duktape.org/api.html#duk_eval_string
 func (d *Context) EvalString(src string) {
-	__src__ := C.CString(src)
-	C._duk_eval_string(d.duk_context, __src__)
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	C._duk_eval_string(d.duk_context, sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_eval_string_noresult
 func (d *Context) EvalStringNoresult(src string) {
-	__src__ := C.CString(src)
-	C._duk_eval_string_noresult(d.duk_context, __src__)
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	C._duk_eval_string_noresult(d.duk_context, sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_fatal
 func (d *Context) Fatal(errCode int, errMsg string) {
-	__errMsg__ := C.CString(errMsg)
-	defer C.free(unsafe.Pointer(__errMsg__))
-	C.duk_fatal_raw(d.duk_context, __errMsg__)
+	sp := d.strPool.GetStringPointer(errMsg)
+	defer d.strPool.FreeStringPointer(sp)
+	C.duk_fatal_raw(d.duk_context, sp.CString())
 }
 
 // See: http://duktape.org/api.html#duk_gc
@@ -477,9 +472,9 @@ func (d *Context) GetFinalizer(index int) {
 
 // See: http://duktape.org/api.html#duk_get_global_string
 func (d *Context) GetGlobalString(key string) bool {
-	__key__ := C.CString(key)
-	result := int(C.duk_get_global_string(d.duk_context, __key__)) == 1
-	C.free(unsafe.Pointer(__key__))
+	sp := d.strPool.GetStringPointer(key)
+	result := int(C.duk_get_global_string(d.duk_context, sp.CString())) == 1
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
@@ -533,9 +528,9 @@ func (d *Context) GetPropIndex(objIndex int, arrIndex uint) bool {
 
 // See: http://duktape.org/api.html#duk_get_prop_string
 func (d *Context) GetPropString(objIndex int, key string) bool {
-	__key__ := C.CString(key)
-	result := int(C.duk_get_prop_string(d.duk_context, C.duk_idx_t(objIndex), __key__)) == 1
-	C.free(unsafe.Pointer(__key__))
+	sp := d.strPool.GetStringPointer(key)
+	result := int(C.duk_get_prop_string(d.duk_context, C.duk_idx_t(objIndex), sp.CString())) == 1
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
@@ -589,9 +584,9 @@ func (d *Context) HasPropIndex(objIndex int, arrIndex uint) bool {
 
 // See: http://duktape.org/api.html#duk_has_prop_string
 func (d *Context) HasPropString(objIndex int, key string) bool {
-	__key__ := C.CString(key)
-	result := int(C.duk_has_prop_string(d.duk_context, C.duk_idx_t(objIndex), __key__)) == 1
-	C.free(unsafe.Pointer(__key__))
+	sp := d.strPool.GetStringPointer(key)
+	result := int(C.duk_has_prop_string(d.duk_context, C.duk_idx_t(objIndex), sp.CString())) == 1
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
@@ -798,42 +793,41 @@ func (d *Context) Pcompile(flags uint) error {
 
 // See: http://duktape.org/api.html#duk_pcompile_file
 func (d *Context) PcompileFile(flags uint, path string) error {
-	__path__ := C.CString(path)
-	result := int(C._duk_pcompile_file(d.duk_context, C.duk_uint_t(flags), __path__))
-	C.free(unsafe.Pointer(__path__))
+	sp := d.strPool.GetStringPointer(path)
+	result := int(C._duk_pcompile_file(d.duk_context, C.duk_uint_t(flags), sp.CString()))
+	d.strPool.FreeStringPointer(sp)
 	return d.castStringToError(result)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_lstring
 func (d *Context) PcompileLstring(flags uint, src string, len int) error {
-	__src__ := C.CString(src)
-	result := int(C._duk_pcompile_lstring(d.duk_context, C.duk_uint_t(flags), __src__, C.duk_size_t(len)))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	result := int(C._duk_pcompile_lstring(d.duk_context, C.duk_uint_t(flags), sp.CString(), C.duk_size_t(len)))
+	d.strPool.FreeStringPointer(sp)
 	return d.castStringToError(result)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_lstring_filename
 func (d *Context) PcompileLstringFilename(flags uint, src string, len int) error {
-	__src__ := C.CString(src)
-	result := int(C._duk_pcompile_lstring_filename(d.duk_context, C.duk_uint_t(flags), __src__, C.duk_size_t(len)))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	result := int(C._duk_pcompile_lstring_filename(d.duk_context, C.duk_uint_t(flags), sp.CString(), C.duk_size_t(len)))
+	d.strPool.FreeStringPointer(sp)
 	return d.castStringToError(result)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_string
 func (d *Context) PcompileString(flags uint, src string) error {
-	__src__ := C.CString(src)
-	result := int(C._duk_pcompile_string(d.duk_context, C.duk_uint_t(flags), __src__))
-	C.free(unsafe.Pointer(__src__))
-	fmt.Println("result herhehreh", result)
-	return nil //d.castStringToError(result)
+	sp := d.strPool.GetStringPointer(src)
+	result := int(C._duk_pcompile_string(d.duk_context, C.duk_uint_t(flags), sp.CString()))
+	d.strPool.FreeStringPointer(sp)
+	return d.castStringToError(result)
 }
 
 // See: http://duktape.org/api.html#duk_pcompile_string_filename
 func (d *Context) PcompileStringFilename(flags uint, src string) error {
-	__src__ := C.CString(src)
-	result := int(C._duk_pcompile_string_filename(d.duk_context, C.duk_uint_t(flags), __src__))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	result := int(C._duk_pcompile_string_filename(d.duk_context, C.duk_uint_t(flags), sp.CString()))
+	d.strPool.FreeStringPointer(sp)
 	return d.castStringToError(result)
 }
 
@@ -845,34 +839,34 @@ func (d *Context) Peval() error {
 
 // See: http://duktape.org/api.html#duk_peval_file
 func (d *Context) PevalFile(path string) error {
-	__path__ := C.CString(path)
-	result := int(C._duk_peval_file(d.duk_context, __path__))
-	C.free(unsafe.Pointer(__path__))
+	sp := d.strPool.GetStringPointer(path)
+	result := int(C._duk_peval_file(d.duk_context, sp.CString()))
+	d.strPool.FreeStringPointer(sp)
 	return d.castStringToError(result)
 }
 
 // See: http://duktape.org/api.html#duk_peval_file_noresult
 func (d *Context) PevalFileNoresult(path string) int {
-	__path__ := C.CString(path)
-	result := int(C._duk_peval_file_noresult(d.duk_context, __path__))
-	C.free(unsafe.Pointer(__path__))
+	sp := d.strPool.GetStringPointer(path)
+	result := int(C._duk_peval_file_noresult(d.duk_context, sp.CString()))
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
 // See: http://duktape.org/api.html#duk_peval_lstring
 func (d *Context) PevalLstring(src string, len int) error {
-	__src__ := C.CString(src)
-	result := int(C._duk_peval_lstring(d.duk_context, __src__, C.duk_size_t(len)))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	result := int(C._duk_peval_lstring(d.duk_context, sp.CString(), C.duk_size_t(len)))
+	d.strPool.FreeStringPointer(sp)
 	return d.castStringToError(result)
 
 }
 
 // See: http://duktape.org/api.html#duk_peval_lstring_noresult
 func (d *Context) PevalLstringNoresult(src string, len int) int {
-	__src__ := C.CString(src)
-	result := int(C._duk_peval_lstring_noresult(d.duk_context, __src__, C.duk_size_t(len)))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	result := int(C._duk_peval_lstring_noresult(d.duk_context, sp.CString(), C.duk_size_t(len)))
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
@@ -883,34 +877,22 @@ func (d *Context) PevalNoresult() int {
 
 // See: http://duktape.org/api.html#duk_peval_string
 func (d *Context) PevalString(src string) error {
-	__src__ := C.CString(src)
-	result := int(C._duk_peval_string(d.duk_context, __src__))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	result := int(C._duk_peval_string(d.duk_context, sp.CString()))
+	d.strPool.FreeStringPointer(sp)
 	return d.castStringToError(result)
 }
 
-func (d *Context) PevalStringPtr(ptrStruct *PtrStruct) error {
-	__src__ := ptrStruct.StrPtr
-	result := int(C._duk_peval_string(d.duk_context, __src__))
+func (d *Context) PevalStringPtr(sp *StringPointer) error {
+	result := int(C._duk_peval_string(d.duk_context, sp.CString()))
 	return d.castStringToError(result)
-}
-
-func GetStringPtr(src string) *PtrStruct {
-	__src__ := C.CString(src)
-	return &PtrStruct{
-		StrPtr: __src__,
-	}
-}
-
-func FreeStringPtr(ptrStruct *PtrStruct) {
-	C.free(unsafe.Pointer(ptrStruct.StrPtr))
 }
 
 // See: http://duktape.org/api.html#duk_peval_string_noresult
 func (d *Context) PevalStringNoresult(src string) int {
-	__src__ := C.CString(src)
-	result := int(C._duk_peval_string_noresult(d.duk_context, __src__))
-	C.free(unsafe.Pointer(__src__))
+	sp := d.strPool.GetStringPointer(src)
+	result := int(C._duk_peval_string_noresult(d.duk_context, sp.CString()))
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
@@ -1026,9 +1008,9 @@ func (d *Context) PushDynamicBuffer(size int) unsafe.Pointer {
 
 // See: http://duktape.org/api.html#duk_push_error_object
 func (d *Context) PushErrorObject(errCode int, format string, value interface{}) {
-	__str__ := C.CString(fmt.Sprintf(format, value))
-	C._duk_push_error_object(d.duk_context, C.duk_errcode_t(errCode), __str__)
-	C.free(unsafe.Pointer(__str__))
+	sp := d.strPool.GetStringPointer(fmt.Sprintf(format, value))
+	C._duk_push_error_object(d.duk_context, C.duk_errcode_t(errCode), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_push_false
@@ -1067,14 +1049,10 @@ func (d *Context) PushInt(val int) {
 }
 
 // See: http://duktape.org/api.html#duk_push_lstring
-func (d *Context) PushLstring(str string, len int) string {
-	__str__ := C.CString(str)
-	var result string
-	if s := C.duk_push_lstring(d.duk_context, __str__, C.duk_size_t(len)); s != nil {
-		result = C.GoString(s)
-	}
-	C.free(unsafe.Pointer(__str__))
-	return result
+func (d *Context) PushLstring(str string, len int) {
+	sp := d.strPool.GetStringPointer(str)
+	C.duk_push_lstring(d.duk_context, sp.CString(), C.duk_size_t(len))
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_push_nan
@@ -1099,19 +1077,19 @@ func (d *Context) PushObject() int {
 
 // See: http://duktape.org/api.html#duk_push_string
 func (d *Context) PushString(str string) {
-	cs := d.strPool.GetString(str)
+	cs := d.strPool.GetStringPointer(str)
 	C.duk_push_string(d.duk_context, cs.CString())
-	d.strPool.FreeString(cs)
+	d.strPool.FreeStringPointer(cs)
 }
 
 // See: http://duktape.org/api.html#duk_push_string_file
 func (d *Context) PushStringFile(path string) string {
-	__path__ := C.CString(path)
+	sp := d.strPool.GetStringPointer(path)
 	var result string
-	if s := C._duk_push_string_file(d.duk_context, __path__); s != nil {
+	if s := C._duk_push_string_file(d.duk_context, sp.CString()); s != nil {
 		result = C.GoString(s)
 	}
-	C.free(unsafe.Pointer(__path__))
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
@@ -1152,9 +1130,9 @@ func (d *Context) PushUndefined() {
 
 // See: http://duktape.org/api.html#duk_put_global_string
 func (d *Context) PutGlobalString(key string) bool {
-	__key__ := C.CString(key)
-	result := int(C.duk_put_global_string(d.duk_context, __key__)) == 1
-	C.free(unsafe.Pointer(__key__))
+	sp := d.strPool.GetStringPointer(key)
+	result := int(C.duk_put_global_string(d.duk_context, sp.CString())) == 1
+	d.strPool.FreeStringPointer(sp)
 	return result
 }
 
@@ -1170,9 +1148,9 @@ func (d *Context) PutPropIndex(objIndex int, arrIndex uint) bool {
 
 // See: http://duktape.org/api.html#duk_put_prop_string
 func (d *Context) PutPropString(objIndex int, key string) bool {
-	cs := d.strPool.GetString(key)
+	cs := d.strPool.GetStringPointer(key)
 	result := int(C.duk_put_prop_string(d.duk_context, C.duk_idx_t(objIndex), cs.CString())) == 1
-	d.strPool.FreeString(cs)
+	d.strPool.FreeStringPointer(cs)
 	return result
 }
 
@@ -1561,16 +1539,16 @@ func (d *Context) LoadFunction() {
 
 // See: http://duktape.org/api.html#duk_log
 func (d *Context) Log(loglevel int, format string, value interface{}) {
-	__str__ := C.CString(fmt.Sprintf(format, value))
-	C._duk_log(d.duk_context, C.duk_int_t(loglevel), __str__)
-	C.free(unsafe.Pointer(__str__))
+	sp := d.strPool.GetStringPointer(fmt.Sprintf(format, value))
+	C._duk_log(d.duk_context, C.duk_int_t(loglevel), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_log_va
 func (d *Context) LogVa(logLevel int, format string, values ...interface{}) {
-	__str__ := C.CString(fmt.Sprintf(format, values...))
-	C._duk_log(d.duk_context, C.duk_int_t(logLevel), __str__)
-	C.free(unsafe.Pointer(__str__))
+	sp := d.strPool.GetStringPointer(fmt.Sprintf(format, values...))
+	C._duk_log(d.duk_context, C.duk_int_t(logLevel), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_pnew
@@ -1603,9 +1581,9 @@ func (d *Context) PushCLightfunc(fn *[0]byte, nargs, length, magic int) int {
 
 // See: http://duktape.org/api.html#duk_push_error_object_va
 func (d *Context) PushErrorObjectVa(errCode int, format string, values ...interface{}) {
-	__str__ := C.CString(fmt.Sprintf(format, values...))
-	C._duk_push_error_object(d.duk_context, C.duk_errcode_t(errCode), __str__)
-	C.free(unsafe.Pointer(__str__))
+	sp := d.strPool.GetStringPointer(fmt.Sprintf(format, values...))
+	C._duk_push_error_object(d.duk_context, C.duk_errcode_t(errCode), sp.CString())
+	d.strPool.FreeStringPointer(sp)
 }
 
 // See: http://duktape.org/api.html#duk_push_external_buffer
