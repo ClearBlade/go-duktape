@@ -8,6 +8,8 @@ package duktape
 #include "duk_logging.h"
 #include "duk_v1_compat.h"
 #include "duk_print_alert.h"
+#include "json.h"
+
 static void _duk_eval_string(duk_context *ctx, const char *str) {
   duk_eval_string(ctx, str);
 }
@@ -170,6 +172,12 @@ import (
 	"fmt"
 	"unsafe"
 )
+
+func (d *Context) MartinTest(s string) {
+	sp := d.strPool.GetStringPointer(s)
+	C.martin_parse_json(d.duk_context, sp.CString(), C.int(len(s)))
+	d.strPool.FreeStringPointer(sp)
+}
 
 // See: http://duktape.org/api.html#duk_alloc
 func (d *Context) Alloc(size int) unsafe.Pointer {
