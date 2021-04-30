@@ -81,7 +81,7 @@ func (s *strPool) get(cap int) *StringPointer {
 	// give them mem with cap that's the next power of 2
 	normalizedCap := 2 << int(math.Log2(float64(cap)))
 	ret := &StringPointer{
-		p:     C.malloc(C.ulong(normalizedCap)),
+		p:     C.malloc(C.size_t(normalizedCap)),
 		cap:   normalizedCap,
 		inuse: true,
 	}
